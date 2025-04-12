@@ -1,5 +1,4 @@
 bucket         = "your-globally-unique-bucket-name"  # Must match state_bucket_name in terraform.tfvars
 key            = "terraform.tfstate"  # Path to the state file within the bucket
 region         = "us-east-1"  # Must match aws_region in terraform.tfvars
-dynamodb_table = "your-terraform-locks-table"  # Must match dynamodb_table_name in terraform.tfvars
 encrypt        = true  # Encrypt state file at rest

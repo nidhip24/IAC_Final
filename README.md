@@ -9,7 +9,6 @@ The infrastructure includes:
 - EC2 instance with a public IP
 - Security group allowing SSH (port 22) and HTTP/HTTPS (ports 80/443) access
 - S3 bucket for Terraform state storage with versioning enabled
-- DynamoDB table for state locking
 
 ## Prerequisites
 
@@ -33,7 +32,7 @@ The infrastructure includes:
 
 ### First Deployment (Local State)
 
-For the first deployment, you need to use local state to create the S3 bucket and DynamoDB table that will later store your Terraform state:
+For the first deployment, you need to use local state to create the S3 bucket that will later store your Terraform state:
 
 1. **IMPORTANT**: Make sure the S3 backend configuration in `backend.tf` is commented out for the first run
 2. Initialize Terraform with local state:
@@ -47,13 +46,13 @@ For the first deployment, you need to use local state to create the S3 bucket an
 
 ### Migrating to Remote State
 
-After the S3 bucket and DynamoDB table are created, update the backend configuration:
+After the S3 bucket is created, update the backend configuration:
 
 1. Create your own `backend-config.tfvars` file based on the provided example:
    ```bash
    cp backend-config.tfvars.example backend-config.tfvars
    ```
-2. Update `backend-config.tfvars` with your actual bucket and DynamoDB table names (matching what you specified in `terraform.tfvars`)
+2. Update `backend-config.tfvars` with your actual bucket name (matching what you specified in `terraform.tfvars`)
 3. Uncomment the backend "s3" {} block in `backend.tf`
 4. Re-initialize Terraform to migrate the state to S3:
    ```bash
@@ -71,39 +70,51 @@ terraform apply # Apply changes
 
 ### Clean Up
 
-To destroy all resources when you're done:
+To properly destroy all infrastructure and avoid issues with S3 state storage, follow these steps:
 
-1. If using S3 backend, you must first empty the S3 bucket:
+1. **Backup your current state** (optional but recommended):
    ```bash
-   aws s3 rm s3://YOUR_BUCKET_NAME --recursive
+   aws s3 cp s3://YOUR_BUCKET_NAME/terraform.tfstate ./terraform.tfstate.backup
    ```
-2. Then destroy the infrastructure:
+
+2. **Migrate state back to local storage**:
+   - Comment out the backend block in `backend.tf`
+   - Re-initialize Terraform with force-copy to bring the state locally:
+     ```bash
+     terraform init -migrate-state -force-copy
+     ```
+
+3. **Empty the S3 bucket** (required before the bucket can be deleted):
+   - For a simple bucket:
+     ```bash
+     aws s3 rm s3://YOUR_BUCKET_NAME --recursive
+     ```
+   - For a bucket with versioning enabled:
+     ```bash
+     aws s3api list-object-versions --bucket YOUR_BUCKET_NAME \
+       --query 'Versions[].{Key:Key,VersionId:VersionId}' \
+       --output text | \
+       awk '{print "--key "$1" --version-id "$2}' | \
+       xargs -n4 aws s3api delete-object --bucket YOUR_BUCKET_NAME
+     ```
+
+4. **Run terraform destroy** to remove all infrastructure:
    ```bash
    terraform destroy
    ```
+   Confirm with "yes" when prompted.
 
-> **Important**: If you encounter state lock errors during destroy, you may need to force-unlock:
-> ```bash
-> terraform force-unlock LOCK_ID
-> ```
-> Replace LOCK_ID with the lock ID from the error message.
+5. **Verify cleanup** through the AWS Console to ensure all resources have been removed.
 
 ## Handling S3 Backend Errors
 
 If you encounter errors related to the S3 backend, try these solutions:
 
 1. **"Bucket not empty" error when deleting S3 bucket**:
-   - Empty the bucket first before destroying:
-     ```bash
-     aws s3 rm s3://your-bucket-name --recursive
-     ```
+   - Empty the bucket using the commands in the cleanup section above
 
-2. **State lock errors**:
-   - If a previous operation was interrupted, you may need to force-unlock:
-     ```bash
-     terraform force-unlock LOCK_ID
-     ```
-   - If DynamoDB table doesn't exist but is referenced, comment out the backend configuration in `backend.tf` and run:
+2. **Other backend issues**:
+   - If you encounter backend-related errors, comment out the backend configuration in `backend.tf` and run:
      ```bash
      terraform init -reconfigure
      ```
@@ -114,7 +125,6 @@ If you encounter errors related to the S3 backend, try these solutions:
 - `network.tf`: Network infrastructure including VPC, subnets, and routing
 - `security.tf`: Security groups and access rules
 - `storage.tf`: S3 bucket configuration for state storage
-- `dynamodb.tf`: DynamoDB table for state locking
 - `variables.tf`: Variable definitions
 - `terraform.tfvars`: Variable values (not committed to version control)
 - `terraform.tfvars.example`: Example variable values (safe to commit)
@@ -122,11 +132,3 @@ If you encounter errors related to the S3 backend, try these solutions:
 - `backend-config.tfvars`: Backend configuration values (not committed to version control)
 - `backend-config.tfvars.example`: Example backend configuration (safe to commit)
 - `README.md`: Project documentation
-
-## Best Practices
-
-- Don't commit `terraform.tfvars` or `backend-config.tfvars` to version control as they may contain sensitive information
-- Use the provided `.gitignore` file to prevent accidental commits of sensitive files
-- Choose strong, unique passwords for your AWS account
-- Follow the principle of least privilege when setting up AWS credentials
-- Regularly update your Terraform version and provider versions

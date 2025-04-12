@@ -6,8 +6,9 @@ terraform {
     }
   }
 
-  # To use the S3 backend, uncomment the following block after creating the S3 bucket and DynamoDB table
-  # To initialize with this backend, run:
+  # IMPORTANT: For first deployment, keep this backend block commented out
+  # After S3 bucket is created, uncomment this block and run:
   # terraform init -backend-config=backend-config.tfvars -migrate-state
-#   backend "s3" {}
+  #
+  # backend "s3" {}
 } 
