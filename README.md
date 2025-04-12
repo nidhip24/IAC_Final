@@ -49,9 +49,13 @@ For the first deployment, you need to use local state to create the S3 bucket an
 
 After the S3 bucket and DynamoDB table are created, update the backend configuration:
 
-1. Update `backend-config.tfvars` with your actual bucket and DynamoDB table names
-2. Uncomment the backend "s3" {} block in `backend.tf`
-3. Re-initialize Terraform to migrate the state to S3:
+1. Create your own `backend-config.tfvars` file based on the provided example:
+   ```bash
+   cp backend-config.tfvars.example backend-config.tfvars
+   ```
+2. Update `backend-config.tfvars` with your actual bucket and DynamoDB table names (matching what you specified in `terraform.tfvars`)
+3. Uncomment the backend "s3" {} block in `backend.tf`
+4. Re-initialize Terraform to migrate the state to S3:
    ```bash
    terraform init -backend-config=backend-config.tfvars -migrate-state
    ```
@@ -115,13 +119,14 @@ If you encounter errors related to the S3 backend, try these solutions:
 - `terraform.tfvars`: Variable values (not committed to version control)
 - `terraform.tfvars.example`: Example variable values (safe to commit)
 - `backend.tf`: Terraform backend configuration
-- `backend-config.tfvars`: Backend configuration values
+- `backend-config.tfvars`: Backend configuration values (not committed to version control)
+- `backend-config.tfvars.example`: Example backend configuration (safe to commit)
 - `README.md`: Project documentation
 
 ## Best Practices
 
-- Don't commit `terraform.tfvars` to version control if it contains sensitive information
+- Don't commit `terraform.tfvars` or `backend-config.tfvars` to version control as they may contain sensitive information
 - Use the provided `.gitignore` file to prevent accidental commits of sensitive files
 - Choose strong, unique passwords for your AWS account
 - Follow the principle of least privilege when setting up AWS credentials
-- Regularly update your Terraform version and provider versions 
+- Regularly update your Terraform version and provider versions

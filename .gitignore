@@ -9,9 +9,10 @@
 crash.log
 crash.*.log
 
-# Exclude terraform.tfvars file as it may contain sensitive data
-# If you want to provide an example, create a terraform.tfvars.example file instead
-*.tfvars
+# Exclude terraform.tfvars and backend-config.tfvars as they may contain sensitive data
+# Use the example files as templates instead
+terraform.tfvars
+backend-config.tfvars
 *.tfvars.json
 
 # Ignore override files as they are usually used for local development
